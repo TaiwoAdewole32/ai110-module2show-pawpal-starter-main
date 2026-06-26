@@ -1,0 +1,55 @@
+classDiagram
+    class Pet {
+        +String name
+        +String species
+        +String breed
+        +int age
+        +String foodType
+        +String medication
+        +int energyLevel
+        +List~String~ careNeeds
+        +addCareNeed(need: String) void
+        +getPetSummary() String
+    }
+
+    class Owner {
+        +String name
+        +int availableMinutes
+        +Map~String, String~ preferences
+        +List~Pet~ pets
+        +addPet(pet: Pet) void
+        +updatePreferences(prefs: Map) void
+        +getAvailableTime() int
+    }
+
+    class Task {
+        +String taskName
+        +String taskType
+        +int durationMinutes
+        +String priority
+        +Pet pet
+        +String preferredTime
+        +boolean completed
+        +String notes
+        +markComplete() void
+        +updateTask(field: String, value: String) void
+        +getTaskSummary() String
+    }
+
+    class Scheduler {
+        +List~Task~ tasks
+        +int timeAvailable
+        +List~Task~ dailyPlan
+        +List~Task~ unscheduledTasks
+        +addTask(task: Task) void
+        +editTask(task: Task) void
+        +generatePlan() List~Task~
+        +sortTasksByPriority() List~Task~
+        +detectConflicts() List~Task~
+        +explainPlan() String
+    }
+
+    Owner "1" --> "0..*" Pet : owns
+    Owner "1" --> "1" Scheduler : uses
+    Scheduler "1" --> "0..*" Task : manages
+    Task "1" --> "1" Pet : assignedTo
