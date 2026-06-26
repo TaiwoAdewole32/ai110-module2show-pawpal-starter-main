@@ -1,6 +1,15 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass, field as dc_field
+from datetime import time
+from enum import Enum
+from typing import Any, Optional
+import uuid
+
+
+class Priority(str, Enum):
+    LOW    = "low"
+    MEDIUM = "medium"
+    HIGH   = "high"
 
 
 @dataclass
@@ -12,7 +21,7 @@ class Pet:
     foodType: str
     medication: str
     energyLevel: int
-    careNeeds: list[str] = field(default_factory=list)
+    careNeeds: list[str] = dc_field(default_factory=list)
 
     def addCareNeed(self, need: str) -> None:
         pass
@@ -26,42 +35,20 @@ class Task:
     taskName: str
     taskType: str
     durationMinutes: int
-    priority: str
+    priority: Priority
     pet: Pet
-    preferredTime: str
+    preferredTime: time          # e.g. time(9, 0) for 9:00 AM
     completed: bool = False
     notes: str = ""
+    taskId: str = dc_field(default_factory=lambda: str(uuid.uuid4()))
 
     def markComplete(self) -> None:
         pass
 
-    def updateTask(self, field: str, value: str) -> None:
+    def updateTask(self, field_name: str, value: Any) -> None:
         pass
 
     def getTaskSummary(self) -> str:
-        pass
-
-
-class Owner:
-    def __init__(
-        self,
-        name: str,
-        availableMinutes: int,
-        preferences: dict[str, str],
-        pets: Optional[list[Pet]] = None,
-    ) -> None:
-        self.name = name
-        self.availableMinutes = availableMinutes
-        self.preferences = preferences
-        self.pets: list[Pet] = pets if pets is not None else []
-
-    def addPet(self, pet: Pet) -> None:
-        pass
-
-    def updatePreferences(self, prefs: dict[str, str]) -> None:
-        pass
-
-    def getAvailableTime(self) -> int:
         pass
 
 
@@ -81,7 +68,7 @@ class Scheduler:
     def addTask(self, task: Task) -> None:
         pass
 
-    def editTask(self, task: Task) -> None:
+    def editTask(self, task_id: str, field_name: str, value: Any) -> None:
         pass
 
     def generatePlan(self) -> list[Task]:
@@ -90,8 +77,36 @@ class Scheduler:
     def sortTasksByPriority(self) -> list[Task]:
         pass
 
-    def detectConflicts(self) -> list[Task]:
+    def detectConflicts(self) -> list[tuple[Task, Task]]:
         pass
 
     def explainPlan(self) -> str:
+        pass
+
+
+class Owner:
+    def __init__(
+        self,
+        name: str,
+        availableMinutes: int,
+        preferences: dict[str, str],
+        pets: Optional[list[Pet]] = None,
+        scheduler: Optional[Scheduler] = None,
+    ) -> None:
+        self.name = name
+        self.availableMinutes = availableMinutes
+        self.preferences = preferences
+        self.pets: list[Pet] = pets if pets is not None else []
+        self.scheduler: Scheduler = (
+            scheduler if scheduler is not None
+            else Scheduler(timeAvailable=availableMinutes)
+        )
+
+    def addPet(self, pet: Pet) -> None:
+        pass
+
+    def updatePreferences(self, prefs: dict[str, str]) -> None:
+        pass
+
+    def getAvailableTime(self) -> int:
         pass

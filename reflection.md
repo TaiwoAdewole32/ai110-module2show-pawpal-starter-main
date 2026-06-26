@@ -15,6 +15,8 @@ My initial UML design includes four main classes: Owner, Pet, Task, and Schedule
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
 
+I did change my design during implementation. A change I made was adding a unique ID to the task case because editTask() method would not be able to locate the task to make changes. 
+
 ---
 
 ## 2. Scheduling Logic and Tradeoffs
