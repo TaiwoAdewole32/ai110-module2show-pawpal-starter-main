@@ -24,9 +24,11 @@ class Pet:
     tasks: list[Task] = dc_field(default_factory=list)
 
     def addCareNeed(self, need: str) -> None:
+        """Append a care need string to this pet's careNeeds list."""
         self.careNeeds.append(need)
 
     def getPetSummary(self) -> str:
+        """Return a single-line summary of the pet's key attributes."""
         meds = self.medication or "none"
         needs = ", ".join(self.careNeeds) if self.careNeeds else "none"
         return (
@@ -50,13 +52,16 @@ class Task:
     taskId: str = dc_field(default_factory=lambda: str(uuid.uuid4()))
 
     def markComplete(self) -> None:
+        """Mark this task as completed by setting completed to True."""
         self.completed = True
 
     def updateTask(self, field_name: str, value: Any) -> None:
+        """Update a single task field by name if it exists on the task."""
         if hasattr(self, field_name):
             setattr(self, field_name, value)
 
     def getTaskSummary(self) -> str:
+        """Return a single-line summary of the task including priority, timing, and status."""
         status = "done" if self.completed else "pending"
         summary = (
             f"[{self.priority.value.upper()}] {self.taskName} ({self.taskType}) | "
@@ -92,12 +97,13 @@ class Scheduler:
         self.ownerName = ownerName
 
     def addTask(self, task: Task) -> None:
+        """Add a task to the scheduler and register it on the associated pet."""
         self.tasks.append(task)
         if task not in task.pet.tasks:
             task.pet.tasks.append(task)
 
     def editTask(self, task: Task) -> None:
-        """Replace the stored task that shares task.taskId with the updated version."""
+        """Replace the stored task matching task.taskId in both the scheduler and the pet."""
         for i, stored_task in enumerate(self.tasks):
             if stored_task.taskId == task.taskId:
                 self.tasks[i] = task
@@ -110,7 +116,7 @@ class Scheduler:
                 return
 
     def generatePlan(self) -> list[Task]:
-        """Greedily fill the plan highest-priority first."""
+        """Build a daily plan by greedily fitting highest-priority tasks within available time."""
         sorted_tasks = self.sortTasksByPriority()
         self.dailyPlan = []
         self.unscheduledTasks = []
@@ -128,6 +134,7 @@ class Scheduler:
         return self.dailyPlan
 
     def sortTasksByPriority(self) -> list[Task]:
+        """Return all tasks sorted from highest to lowest priority."""
         return sorted(
             self.tasks,
             key=lambda task: self._PRIORITY_ORDER.get(task.priority, 0),
@@ -135,7 +142,7 @@ class Scheduler:
         )
 
     def detectConflicts(self) -> list[Task]:
-        """Return any tasks whose time windows overlap with another task."""
+        """Return all tasks whose time windows overlap with at least one other task."""
         from datetime import datetime, timedelta
 
         def parse_time(time_string: str) -> Optional[datetime]:
@@ -170,7 +177,7 @@ class Scheduler:
         return list(conflicts.values())
 
     def explainPlan(self) -> str:
-        """Return a readable daily plan grouped by pet."""
+        """Return a daily plan grouped by pet, including unscheduled tasks."""
         if not self.dailyPlan:
             return "No plan generated yet. Call generatePlan() first."
 
@@ -248,10 +255,13 @@ class Owner:
         )
 
     def addPet(self, pet: Pet) -> None:
+        """Add a pet to this owner's list of pets."""
         self.pets.append(pet)
 
     def updatePreferences(self, prefs: dict[str, str]) -> None:
+        """Merge the given preferences into the owner's existing preferences."""
         self.preferences.update(prefs)
 
     def getAvailableTime(self) -> int:
+        """Return the number of minutes the owner has available for pet care."""
         return self.availableMinutes
