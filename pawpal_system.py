@@ -44,7 +44,7 @@ class Task:
     durationMinutes: int
     priority: Priority
     pet: Pet
-    preferredTime: str      # "HH:MM" format, e.g. "09:00"
+    preferredTime: str # in "HH:MM" 24-hour format
     completed: bool = False
     notes: str = ""
     taskId: str = dc_field(default_factory=lambda: str(uuid.uuid4()))
@@ -69,7 +69,11 @@ class Task:
 
 
 class Scheduler:
-    _PRIORITY_ORDER = {Priority.HIGH: 3, Priority.MEDIUM: 2, Priority.LOW: 1}
+    _PRIORITY_ORDER = {
+        Priority.HIGH: 3,
+        Priority.MEDIUM: 2,
+        Priority.LOW: 1
+    }
 
     def __init__(
         self,
@@ -77,11 +81,15 @@ class Scheduler:
         timeAvailable: int = 0,
         dailyPlan: Optional[list[Task]] = None,
         unscheduledTasks: Optional[list[Task]] = None,
+        ownerName: str = "",
     ) -> None:
         self.tasks: list[Task] = tasks if tasks is not None else []
         self.timeAvailable = timeAvailable
         self.dailyPlan: list[Task] = dailyPlan if dailyPlan is not None else []
-        self.unscheduledTasks: list[Task] = unscheduledTasks if unscheduledTasks is not None else []
+        self.unscheduledTasks: list[Task] = (
+            unscheduledTasks if unscheduledTasks is not None else []
+        )
+        self.ownerName = ownerName
 
     def addTask(self, task: Task) -> None:
         self.tasks.append(task)
@@ -90,34 +98,39 @@ class Scheduler:
 
     def editTask(self, task: Task) -> None:
         """Replace the stored task that shares task.taskId with the updated version."""
-        for i, t in enumerate(self.tasks):
-            if t.taskId == task.taskId:
+        for i, stored_task in enumerate(self.tasks):
+            if stored_task.taskId == task.taskId:
                 self.tasks[i] = task
-                for j, pt in enumerate(task.pet.tasks):
-                    if pt.taskId == task.taskId:
+
+                for j, pet_task in enumerate(task.pet.tasks):
+                    if pet_task.taskId == task.taskId:
                         task.pet.tasks[j] = task
                         break
+
                 return
 
     def generatePlan(self) -> list[Task]:
-        """Greedily fill the plan highest-priority first; remainder goes to unscheduledTasks."""
+        """Greedily fill the plan highest-priority first."""
         sorted_tasks = self.sortTasksByPriority()
         self.dailyPlan = []
         self.unscheduledTasks = []
+
         remaining = self.timeAvailable
+
         for task in sorted_tasks:
             if task.durationMinutes <= remaining:
                 self.dailyPlan.append(task)
                 remaining -= task.durationMinutes
             else:
                 self.unscheduledTasks.append(task)
-        self.dailyPlan.sort(key=lambda t: t.preferredTime)
+
+        self.dailyPlan.sort(key=lambda task: task.preferredTime)
         return self.dailyPlan
 
     def sortTasksByPriority(self) -> list[Task]:
         return sorted(
             self.tasks,
-            key=lambda t: self._PRIORITY_ORDER.get(t.priority, 0),
+            key=lambda task: self._PRIORITY_ORDER.get(task.priority, 0),
             reverse=True,
         )
 
@@ -125,48 +138,92 @@ class Scheduler:
         """Return any tasks whose time windows overlap with another task."""
         from datetime import datetime, timedelta
 
-        def parse_time(t_str: str) -> Optional[datetime]:
+        def parse_time(time_string: str) -> Optional[datetime]:
             try:
-                return datetime.strptime(t_str, "%H:%M")
+                return datetime.strptime(time_string, "%H:%M")
             except ValueError:
                 return None
 
-        timed = [(task, parse_time(task.preferredTime)) for task in self.tasks]
-        timed = [(task, start) for task, start in timed if start is not None]
+        timed_tasks = [
+            (task, parse_time(task.preferredTime))
+            for task in self.tasks
+        ]
 
-        seen: dict[str, Task] = {}
-        for i, (task_a, start_a) in enumerate(timed):
+        timed_tasks = [
+            (task, start)
+            for task, start in timed_tasks
+            if start is not None
+        ]
+
+        conflicts: dict[str, Task] = {}
+
+        for i, (task_a, start_a) in enumerate(timed_tasks):
             end_a = start_a + timedelta(minutes=task_a.durationMinutes)
-            for task_b, start_b in timed[i + 1:]:
-                end_b = start_b + timedelta(minutes=task_b.durationMinutes)
-                if start_a < end_b and start_b < end_a:
-                    seen[task_a.taskId] = task_a
-                    seen[task_b.taskId] = task_b
 
-        return list(seen.values())
+            for task_b, start_b in timed_tasks[i + 1:]:
+                end_b = start_b + timedelta(minutes=task_b.durationMinutes)
+
+                if start_a < end_b and start_b < end_a:
+                    conflicts[task_a.taskId] = task_a
+                    conflicts[task_b.taskId] = task_b
+
+        return list(conflicts.values())
 
     def explainPlan(self) -> str:
+        """Return a readable daily plan grouped by pet."""
         if not self.dailyPlan:
             return "No plan generated yet. Call generatePlan() first."
 
-        total_min = sum(t.durationMinutes for t in self.dailyPlan)
+        total_minutes = sum(task.durationMinutes for task in self.dailyPlan)
+
+        if self.ownerName:
+            heading = f"Daily plan for {self.ownerName}'s pets"
+        else:
+            heading = "Daily plan"
+
         lines = [
-            f"Daily plan — {len(self.dailyPlan)} task(s), "
-            f"{total_min} of {self.timeAvailable} min used:"
+            f"{heading} — {len(self.dailyPlan)} task(s), "
+            f"{total_minutes} of {self.timeAvailable} min used:"
         ]
-        for i, task in enumerate(self.dailyPlan, 1):
-            lines.append(
-                f"  {i}. {task.preferredTime}  {task.taskName} "
-                f"({task.durationMinutes} min) [{task.priority.value}] — {task.pet.name}"
+
+        tasks_by_pet: dict[str, list[Task]] = {}
+        pet_labels: dict[str, str] = {}
+
+        for task in self.dailyPlan:
+            pet_key = task.pet.name
+            tasks_by_pet.setdefault(pet_key, []).append(task)
+
+            if task.pet.breed:
+                pet_labels[pet_key] = f"{task.pet.name} ({task.pet.breed})"
+            else:
+                pet_labels[pet_key] = f"{task.pet.name} ({task.pet.species})"
+
+        for pet_key, pet_tasks in tasks_by_pet.items():
+            lines.append(f"\n{pet_labels[pet_key]}:")
+
+            sorted_pet_tasks = sorted(
+                pet_tasks,
+                key=lambda task: task.preferredTime
             )
+
+            for task in sorted_pet_tasks:
+                lines.append(
+                    f"  {task.preferredTime} — {task.taskName} "
+                    f"({task.durationMinutes} min) "
+                    f"[priority: {task.priority.value}]"
+                )
 
         if self.unscheduledTasks:
             lines.append(
-                f"\nNot scheduled ({len(self.unscheduledTasks)} task(s) — insufficient time):"
+                f"\nNot scheduled "
+                f"({len(self.unscheduledTasks)} task(s) — insufficient time):"
             )
+
             for task in self.unscheduledTasks:
                 lines.append(
-                    f"  - {task.taskName} ({task.durationMinutes} min) [{task.priority.value}]"
+                    f"  - {task.taskName} for {task.pet.name} "
+                    f"({task.durationMinutes} min) "
+                    f"[priority: {task.priority.value}]"
                 )
 
         return "\n".join(lines)
