@@ -26,10 +26,15 @@ I did change my design during implementation. A change I made was adding a uniqu
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+My scheduler consider's  the owner's available time, task duration, task priority, completion status, due date, and whether a taask fits inside the owner's care window. It also cheecks for overlapping taask times separately so the user can see possible scheduling conflicts. I decidedd that priority and available time maattered most because PawPal+ should make sure the most important pet care tasks get scheduled first.
+
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+One tradeoff my scheduler makes is that it detects scheduling conflicts but does not automatically fix them by moving tasks to a new time. This is a reasonable tradeoff beausce some pet care task, such as medication or feeding, maay need to happen at a specific time instead of being automatically shifted. 
 
 ---
 

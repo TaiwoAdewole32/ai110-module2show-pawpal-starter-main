@@ -87,10 +87,10 @@ Sample test output:
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | sortTasksByPriority(), sort_by_time(), generatePlan() | Tasks can be sorted by priority from high to low, and the final daily plan is sorted by preferred time so it appears in schedule order.  |
+| Filtering | filterTasks(), generatePlan(), _fits_window() | Tasks can be filtered by completion status and pet name. The scheduler also skips completed tasks, future tasks, tasks that exceed remaining time, and tasks outside the owner’s available window. |
+| Conflict handling | detectConflicts(), getConflictWarnings()| The scheduler checks whether task time windows overlap and can return conflict warnings for same-pet or cross-pet conflicts.  |
+| Recurring tasks | completeTask(), spawn_next() |  When a daily or weekly task is completed, the scheduler creates the next occurrence with the same task details and a new due date. |
 
 ## 📸 Demo Walkthrough
 
